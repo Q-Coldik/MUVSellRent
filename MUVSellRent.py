@@ -23,6 +23,7 @@ import threading
 import time
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
@@ -38,12 +39,12 @@ if TYPE_CHECKING:
 
 # NAME / VERSION / DESCRIPTION / CHANGELOG / COMPAT / MAP_FILE — по одной строке: их читает сайт (/api/plugins)
 NAME = "MUVSell Rent"
-VERSION = "1.1.0"
+VERSION = "1.1.7"
 DESCRIPTION = "Перепродажа аренды Steam-аккаунтов MUVSell на FunPay: автовыдача, коды Steam Guard, продления, синхронизация наличия и цен, автовыставление лотов, статистика."
 CREDITS = "@MUVSell"
 UUID = "ce1c0a2b-f7df-4a0d-90d3-31012b5ab720"
 SETTINGS_PAGE = True
-CHANGELOG = "Первая версия: автовыдача аренды MUVSell на FunPay, коды Steam Guard, продления (в том числе временным лотом по !продление), !кик, !пароль, !время, !данные, !помощь, синхронизация наличия и цен с наценкой (глобальной, по категориям и у каждой привязки), автовыставление лотов с редактором текстов, статистика и прибыль, аренды, карантин проблемных лотов, категории уведомлений, шаблоны сообщений с превью, диагностика. 1.0.1: лимит на раздел считает только лоты плагина, минимальная цена лота 1 ₽ — у дешёвых игр сроки больше не сливаются в одну цену. 1.0.2: «Создать недостающие» пересоздаёт лоты, удалённые с FunPay, и лоты, стоявшие в чужом разделе; исправлены разделы EA SPORTS FC 24 и The Forest; проблемные лоты — одним уведомлением. 1.0.3: новые стандартные тексты лотов со списком команд покупателя ({commands} собирается из настроек). 1.0.4: в «Удалить несколько» — «Отметить все» и подтверждение перед удалением. 1.0.5: в комментарий аренды на MUVSell уходит только номер заказа FunPay, без ника покупателя. 1.0.6: каждая покупка лота выдаёт новый аккаунт, продление — только командой !продление (временный лот); !друг и !прод убраны; новые тексты выдачи, предупреждения и описаний лотов — нажмите «Переписать тексты у существующих лотов», а если меняли шаблоны сами — проверьте их. 1.0.7: автовыставление в Steam «Аккаунты с играми» и в «Прочие игры» — любую игру, и ту, у которой на FunPay нет своего раздела: «Автовыставление» → «🎮 В Steam» / «🧩 В «Прочие игры»» → нажмите на игру, и она выставится на все сроки из «Длительностей» по тем же шаблонам (тип «Аренда», регион Steam настраивается); карточка игры тоже показывает сроки из «Длительностей»; при ошибке связи с MUVSell видна причина (таймаут, DNS, SSL, прокси); обновления плагина и карта разделов тоже идут через прокси из настроек. 1.0.8: в «Прочие игры» — только игры без своего раздела на FunPay (остальные выставляет обычное автовыставление). 1.0.9: свою команду для кода Steam Guard можно задать в «⚙️ Прочее» (любое слово, можно без «!») — если на !код у вас отвечает ещё и другой плагин. У каждой привязки теперь свой ID (rentM-1001): плагин сам дописывает его в конец описания лота и находит оплаченный лот по нему, а не только по названию — одинаковые или переименованные лоты больше не путаются. 1.1.0: ответы покупателю на английском — кто пишет английские команды (!code, !help, !time…), тому плагин отвечает по-английски: коды, время, продления, предупреждения и следующая выдача; в сообщении с выдачей — строка «🇬🇧 English? Type !help». Выключается в «⚙️ Прочее»."
+CHANGELOG = "Первая версия: автовыдача аренды MUVSell на FunPay, коды Steam Guard, продления (в том числе временным лотом по !продление), !кик, !пароль, !время, !данные, !помощь, синхронизация наличия и цен с наценкой (глобальной, по категориям и у каждой привязки), автовыставление лотов с редактором текстов, статистика и прибыль, аренды, карантин проблемных лотов, категории уведомлений, шаблоны сообщений с превью, диагностика. 1.0.1: лимит на раздел считает только лоты плагина, минимальная цена лота 1 ₽ — у дешёвых игр сроки больше не сливаются в одну цену. 1.0.2: «Создать недостающие» пересоздаёт лоты, удалённые с FunPay, и лоты, стоявшие в чужом разделе; исправлены разделы EA SPORTS FC 24 и The Forest; проблемные лоты — одним уведомлением. 1.0.3: новые стандартные тексты лотов со списком команд покупателя ({commands} собирается из настроек). 1.0.4: в «Удалить несколько» — «Отметить все» и подтверждение перед удалением. 1.0.5: в комментарий аренды на MUVSell уходит только номер заказа FunPay, без ника покупателя. 1.0.6: каждая покупка лота выдаёт новый аккаунт, продление — только командой !продление (временный лот); !друг и !прод убраны; новые тексты выдачи, предупреждения и описаний лотов — нажмите «Переписать тексты у существующих лотов», а если меняли шаблоны сами — проверьте их. 1.0.7: автовыставление в Steam «Аккаунты с играми» и в «Прочие игры» — любую игру, и ту, у которой на FunPay нет своего раздела: «Автовыставление» → «🎮 В Steam» / «🧩 В «Прочие игры»» → нажмите на игру, и она выставится на все сроки из «Длительностей» по тем же шаблонам (тип «Аренда», регион Steam настраивается); карточка игры тоже показывает сроки из «Длительностей»; при ошибке связи с MUVSell видна причина (таймаут, DNS, SSL, прокси); обновления плагина и карта разделов тоже идут через прокси из настроек. 1.0.8: в «Прочие игры» — только игры без своего раздела на FunPay (остальные выставляет обычное автовыставление). 1.0.9: свою команду для кода Steam Guard можно задать в «⚙️ Прочее» (любое слово, можно без «!») — если на !код у вас отвечает ещё и другой плагин. У каждой привязки теперь свой ID (rentM-1001): плагин сам дописывает его в конец описания лота и находит оплаченный лот по нему, а не только по названию — одинаковые или переименованные лоты больше не путаются. 1.1.0: ответы покупателю на английском — кто пишет английские команды (!code, !help, !time…), тому плагин отвечает по-английски: коды, время, продления, предупреждения и следующая выдача; в сообщении с выдачей — строка «🇬🇧 English? Type !help». Выключается в «⚙️ Прочее». 1.1.2: если FunPay отвечает «Много предложений, подождите» (дневной лимит на создание лотов), автовыставление сразу останавливается с понятным сообщением, а не выдаёт ошибку на каждый лот — «Создать недостающие» позже дозальёт оставшиеся. 1.1.3: автовыставление идёт по срокам — сначала все игры на первый срок, потом на следующий, так что при лимите FunPay ни одна игра не остаётся без лотов; в «Прочих играх» лимит — 60 лотов плагина вместо 20 (столько там разрешает FunPay): Raft, Big Walk, The Binding of Isaac, Detroit, Stray больше не пропускаются — нажмите «Создать недостающие». Продление: понимает и !продлить, и срок словами (!продление 3 часа, !продление на 1 день) — раньше на такое плагин молчал или отвечал «не вижу аренды». 1.1.4: обновления применяются сами — скачав новую версию, плагин перезапускает FPC, когда 3 минуты нет заказов и команд покупателей (выключается в «⚙️ Прочее»). 1.1.5: меню плагина открывается командой MUVSell (или /muvsell, регистр не важен) в Telegram-боте Cardinal. 1.1.6: «лимит раздела» больше не срабатывает зря — лоты, удалённые с FunPay, не считаются, и «Создать недостающие» пересоздаёт их все, а не один; на «Много предложений» плагин ждёт минуту и пробует ещё раз, а если стоп — показывает ответ FunPay дословно; другие ошибки со словом «подождите» больше не останавливают выставление; в «Прочие игры» плагин больше не ставит игры, которых нет в списке FunPay (раньше они уходили в «Любая игра»), — ручное выставление туда убрано, такие игры выставляйте в Steam «Аккаунты с играми»; там же — только игры с ценой на сайте. Лоты, уже стоящие в «Любая игра», плагин не трогает — удалите их в «🔗 Привязки», если не нужны. 1.1.7: кнопка «🧩 В «Прочие игры»» вернулась — игры без своего раздела на FunPay и без строки в списке «Прочих игр» (SOS OPS!, Green Hell, YAPYAP и др.) выставляются туда как «Любая игра»: нажмите на игру — лоты на все сроки из «Длительностей». Игры из списка FunPay по-прежнему выставляет обычное автовыставление под своим названием."
 COMPAT = "FunPay Cardinal 0.1.17.15"
 MAP_FILE = "muvsell_funpay_map.json"
 
@@ -54,12 +55,15 @@ MAP_URL = SITE + "/downloads/" + MAP_FILE
 # Общие разделы: сюда реселлер сам выставляет любую игру — по кнопке, по лоту на срок (лимит FunPay — на все игры разом)
 MANUAL = {"steam": (89, "Steam «Аккаунты с играми»"), "other": (451, "«Прочие игры»")}
 STEAM_SUB = MANUAL["steam"][0]
+OTHER_SUB = MANUAL["other"][0]
 MIN_HOURS, MAX_HOURS = 1, 720  # границы одной аренды или продления на MUVSell
 TIMEOUT = 25
 UPDATE_EVERY = 1800            # проверка обновлений плагина, сек
 CREATE_DELAY = 3.0             # пауза между изменениями лотов — FunPay не любит спешку
 Q_CAP = 720                    # потолок паузы проблемного лота, мин
-RATE_RX = re.compile(r"много предложений|подождите|too many|слишком часто", re.I)
+# только ответ «лимит на создание»: голое «подождите» / «too many» бывает и в других ошибках — то был ложный стоп
+RATE_RX = re.compile(r"много предложений|too many offers|слишком часто", re.I)
+RATE_PAUSE = 60                # пауза перед второй попыткой, когда FunPay ответил «Много предложений»
 MISSING_RX = re.compile(r"не найден|not found|404", re.I)
 TAG_RX = re.compile(r"\brentM-\d+\b", re.I)  # ID привязки последней строкой описания лота
 
@@ -242,6 +246,7 @@ DEFAULTS = {
     "ext_cmd": True,            # !продление N — временный лот на N часов
     "ext_word": "!продление",
     "code_word": "!код",        # своя команда кода Steam Guard — если на !код отвечает ещё и другой плагин
+    "auto_update": True,        # скачал новую версию — сам перезапускает FPC, когда нет заказов
     "en_msgs": True,            # отвечать по-английски тем, кто пишет английские команды (!code, !help…)
     "ext_minutes": 10,          # сколько живёт временный лот продления
     "buyer_cmds": True,         # !кик и !пароль
@@ -274,7 +279,8 @@ PARAMS = {  # ключ: (подпись, пояснение, дробное ли
     "q_pause": ("Пауза после ошибки, мин", f"Базовая пауза лота после ошибки FunPay; при повторах удваивается до {Q_CAP} мин.", False, "q"),
     "q_unbind_after": ("Отвязывать после, ошибок", "Сколько раз подряд лот должен не найтись, чтобы привязка удалилась.", False, "q"),
     "lot_cap": ("Лимит на раздел", "Не создавать больше стольких лотов плагина в одном разделе FunPay "
-                                   "(ваши остальные лоты в разделе не считаются).", False, "ac"),
+                                   "(ваши остальные лоты в разделе не считаются). В «Прочих играх» — втрое больше: "
+                                   "там у FunPay лимит 60, а не 20.", False, "ac"),
     "ext_minutes": ("Лот продления живёт, мин", "Сколько минут временный лот продления ждёт оплату, потом удаляется.", False, "params"),
     "balance_min": ("Порог баланса", "Ниже этого баланса MUVSell лоты снимаются с продажи (если включён стоп).", True, "params"),
     "tz": ("Часовой пояс", "Смещение от UTC для «Действует до» и статистики (3 = МСК).", False, "params"),
@@ -302,7 +308,7 @@ _notified: dict = {}    # антиспам уведомлений
 _costs: dict = {}       # (game_id, часы) → (ts, ₽)
 _market: dict = {}      # раздел FunPay → (ts, [(цена, описание)])
 _tmp: dict = {}         # черновики по id пользователя Telegram
-_state = {"low": False, "update": None, "job": None, "job_text": "", "poll_at": 0.0, "price_at": 0.0}
+_state = {"low": False, "update": None, "job": None, "job_text": "", "poll_at": 0.0, "price_at": 0.0, "busy_at": 0.0}
 _cache = {"api": None, "products": (0.0, None), "map": (0.0, None), "bal": (0.0, None), "rate": (0.0, 90.0)}
 
 
@@ -716,9 +722,11 @@ def _markup_src(m: dict) -> str:
     return "категория" if str(m.get("subcat")) in (S.get("cat_markup") or {}) else "глобальная"
 
 
-def _price(api, prod: dict, hours: int, m: dict | None = None) -> int:
-    value = _cost(api, prod, hours) * (1 + _markup(m) / 100)
-    return int(math.ceil(max(float(S.get("min_price") or 1), value)))
+def _price(api, prod: dict, hours: int, m: dict | None = None) -> float:
+    """Цена лота вверх до копейки: до целого рубля наценка на копеечных сроках выходила 100–600%."""
+    value = max(float(S.get("min_price") or 1), _cost(api, prod, hours) * (1 + _markup(m) / 100))
+    value = math.ceil(round(value * 100, 6)) / 100  # round: 0.78 × 1.5 = 1.1700000000000002 → 1.17, а не 1.18
+    return int(value) if value.is_integer() else value
 
 
 def _auto_price(m: dict) -> bool:
@@ -769,6 +777,10 @@ def _mlabel(m: dict) -> str:
 # ---------------------------------------------------------------- лоты FunPay и карантин
 
 class _RateLimited(Exception):
+    pass
+
+
+class _LoggedOut(Exception):
     pass
 
 
@@ -1104,6 +1116,7 @@ def on_new_order(c: "Cardinal", event):
     if not S.get("enabled"):
         return
     order = event.order
+    _state["busy_at"] = time.time()  # автообновление не перезапустит FPC посреди выдачи
     with _lock:
         if order.id in DONE:
             return
@@ -1223,13 +1236,14 @@ def _ext_cleanup():
 def _cmd_ext_lot(chat_id, buyer: str, arg: str):
     """!продление [срок] [логин] — создаёт временный лот на этот срок; оплата продлевает ту же аренду."""
     word = S.get("ext_word") or "!продление"
-    words = arg.split()
-    spans = [w for w in words if re.fullmatch(r"\d+[дdчh]?", w.lower())]
-    rec = _pick_rec(chat_id, buyer, next((w for w in words if w not in spans), ""), f"{word} 3")
+    logins = {r["login"].lower() for r in _active(buyer)}  # «!продление на 3 часа» — «часа» не логин
+    login = next((w for w in arg.split() if w.lower() in logins), "")
+    span = " ".join(w for w in arg.split() if w != login)
+    rec = _pick_rec(chat_id, buyer, login, f"{word} 3")
     if not rec:
         return
     m = _map_by_lot(rec.get("lot")) or next((x for x in MAPS if x["game_id"] == rec["game_id"]), None)
-    hours = _one_hours(spans[0]) if spans else int((m or {}).get("hours") or 0)
+    hours = _one_hours(span) if re.search(r"\d", span) else int((m or {}).get("hours") or 0)
     if not hours:
         return _send(chat_id, _t("ext_usage", _lang(buyer), word=word))
     same = next((e for e in EXT.values() if e["rid"] == rec["id"] and int(e["hours"]) == hours
@@ -1405,6 +1419,7 @@ COMMANDS = [  # (синонимы, обработчик(chat_id, buyer, arg), в
     (("!данные", "!логин", "!data", "!acc"), _cmd_creds, lambda: True),
     (("!помощь", "!команды", "!help", "!commands"), _cmd_help, lambda: True),
     (("!extend",), _cmd_ext_lot, lambda: S.get("ext_cmd")),
+    (("!продлить", "!продли"), _cmd_ext_lot, lambda: S.get("ext_cmd") and (S.get("ext_word") or "!продление") == "!продление"),
     (("!кик", "!kick", "!выкинуть"), lambda c, b, a: _bg(_cmd_kick, c, b, a), lambda: S.get("buyer_cmds")),
     (("!пароль", "!password", "!pass"), lambda c, b, a: _bg(_cmd_password, c, b, a), lambda: S.get("buyer_cmds")),
 ]
@@ -1424,6 +1439,7 @@ def _on_command(chat_id, buyer, text: str):
     else:
         handler = next((h for names, h, enabled in COMMANDS if cmd in names and enabled()), None)
     if handler:
+        _state["busy_at"] = time.time()
         _set_lang(buyer, cmd)  # английская команда — дальше отвечаем ему по-английски, русская — по-русски
         handler(chat_id, buyer, arg)
 
@@ -1676,9 +1692,16 @@ def _check_update():
         notes = re.search(r'^CHANGELOG = "(.*)"$', code, re.M)
         _notify(f"⬆️ Загружена версия <b>v{ver}</b> (сейчас v{VERSION})."
                 + (f"\n\n<b>Что нового:</b>\n{esc(notes.group(1).replace(chr(92) + 'n', chr(10)))}" if notes else "")
-                + "\n\nПерезапустите FPC, чтобы применить.", kb=K().add(B("♻️ Перезапустить FPC", callback_data=f"{P}:restart")))
+                + ("\n\nПерезапущу FPC сам, когда 3 минуты не будет заказов (выключается в «⚙️ Прочее»)."
+                   if S.get("auto_update") else "\n\nПерезапустите FPC, чтобы применить."), kb=K().add(B("♻️ Перезапустить FPC", callback_data=f"{P}:restart")))
     except Exception as e:
         log.warning(f"{LP} проверка обновлений: {e}")
+
+
+def _restart_due() -> bool:
+    """Новая версия скачана и FPC простаивает: нет автовыставления, лота продления и 3 мин — заказов и команд."""
+    return bool(_state["update"] and S.get("auto_update") and not _state["job"] and not _ext_busy
+                and time.time() - _state["busy_at"] > 180)
 
 
 def _poll_loop():
@@ -1702,6 +1725,11 @@ def _poll_loop():
             if time.time() - last_update > UPDATE_EVERY:
                 last_update = time.time()
                 _check_update()
+            if _restart_due():
+                _notify(f"♻️ Применяю v{_state['update']} — перезапускаю FPC.")
+                _flush_q()
+                from Utils.cardinal_tools import restart_program
+                restart_program()
         except Exception:
             log.exception(f"{LP} фоновая проверка")
         _flush_q()
@@ -1747,9 +1775,23 @@ def _stale(m: dict) -> str:
     return ""
 
 
+def _cap(sub) -> int:
+    """Сколько лотов плагина ставить в раздел. У FunPay — 20 предложений продавца на раздел, в «Прочих играх» — 60."""
+    return int(S.get("lot_cap") or 20) * (3 if int(sub) == OTHER_SUB else 1)
+
+
+def _plugin_lots(sub) -> int:
+    """Лоты плагина в разделе сейчас (для лимита). Удалённые с FunPay места не занимают."""
+    return sum(1 for m in MAPS if m.get("auto") and str(m.get("subcat")) == str(sub)
+               and not (PROBLEMS.get(str(m["lot_id"])) or {}).get("missing"))
+
+
 def _plan(durations=None) -> list:
+    """Недостающие лоты: сначала все игры на первый срок, потом на второй… — упрёмся в лимит раздела или дневной
+    лимит FunPay, и ни одна игра не останется совсем без лотов (в «Прочих играх» их 8 на один лимит)."""
     have = {(m["game_id"], int(m["hours"])) for m in MAPS if not _stale(m) and not m.get("manual")}
-    return [(g, p, h) for g, p in _sellable() for h in durations or S["ap_durations"] if (g["game_id"], h) not in have]
+    games = _sellable()
+    return [(g, p, h) for h in durations or S["ap_durations"] for g, p in games if (g["game_id"], h) not in have]
 
 
 def _ckey(g: dict, hours: int) -> str:
@@ -1844,9 +1886,17 @@ def _new_lot_form(sub: int):
     """Поля и выпадающие списки формы нового лота раздела FunPay."""
     from bs4 import BeautifulSoup
     r = cardinal.account.method("get", f"lots/offerEdit?node={sub}", {}, {}, raise_not_200=True)
-    form = BeautifulSoup(r.content.decode(), "html.parser").find("form", class_="form-offer-editor")
+    soup = BeautifulSoup(r.content.decode(), "html.parser")
+    form = soup.find("form", class_="form-offer-editor")
     if not form:
-        raise RuntimeError(f"FunPay не отдал форму лота для раздела {sub}")
+        if "/account/login" in r.url:  # golden_key больше не действует — FunPay шлёт на страницу входа
+            raise _LoggedOut("FunPay не пускает Cardinal в аккаунт: golden_key устарел (выход из аккаунта или смена "
+                             "пароля). Вставьте новый golden_key в настройки Cardinal и перезапустите его")
+        page = soup.find(class_="page-content") or soup.title
+        hint = " ".join(page.get_text(" ").split())[:100] if page else ""
+        if RATE_RX.search(hint):  # «Много предложений, подождите» — лимит FunPay на создание, дальше упадут все
+            raise _RateLimited(hint)
+        raise RuntimeError(f"FunPay не отдал форму лота для раздела {sub}" + (f": «{hint}»" if hint else ""))
     fields, selects = {}, {}
     for inp in form.find_all("input"):
         name = inp.get("name")
@@ -1918,6 +1968,17 @@ def _create_lot(sub: int, map_fields: dict, game: str, texts: tuple, price: int,
     return None, "лот создан, но FunPay его пока не показывает — привяжите его вручную"
 
 
+def _create_or_wait(*args):
+    """_create_lot, а на «Много предложений, подождите» — пауза и вторая попытка: короткий антифлуд FunPay
+    за это время проходит, а настоящий лимит ответит тем же ещё раз (тогда _RateLimited — стоп)."""
+    try:
+        return _create_lot(*args)
+    except _RateLimited as e:
+        log.info(f"{LP} FunPay: «{e}» — жду {RATE_PAUSE} с и пробую ещё раз")
+        time.sleep(RATE_PAUSE)
+        return _create_lot(*args)
+
+
 def _progress(chat_id, msg_id, title: str, done: int, total: int, stats: str):
     bar = "█" * round(done / max(total, 1) * 14)
     _state["job_text"] = f"{title}: {done}/{total} · {stats}"
@@ -1954,9 +2015,9 @@ def _new_map(g: dict, lot_id, hours: int, titles: list, price: int) -> dict:
 
 
 def _run_create(chat_id, msg_id, plan: list):
-    api, cap = _api(), int(S.get("lot_cap") or 20)
+    api = _api()
     created = restored = skipped = failed = 0
-    reasons, counts, limited = Counter(), {}, False
+    reasons, examples, limited = Counter(), {}, ""
 
     def step(i):
         _progress(chat_id, msg_id, "Создание лотов", i, len(plan), f"✅ {created} · ♻️ {restored} · ⏭ {skipped} · ❌ {failed}")
@@ -1975,41 +2036,47 @@ def _run_create(chat_id, msg_id, plan: list):
                     continue
                 except Exception:
                     CREATED.pop(_ckey(g, hours), None)
-            if sub not in counts:  # лимит — только на лоты плагина: ваши остальные лоты в разделе не мешают
-                counts[sub] = sum(1 for m in MAPS if m.get("auto") and str(m.get("subcat")) == str(sub))
-            if counts[sub] >= cap:
+            # лимит — только на лоты плагина: ваши остальные лоты в разделе не мешают. Считаем каждый раз заново:
+            # _drop_stale выше мог только что убрать привязку удалённого лота
+            if _plugin_lots(sub) >= _cap(sub):
                 skipped += 1
-                log.info(f"{LP} автовыставление: {g['name']} {_short(hours)} пропущен — в разделе {sub} уже {cap} лотов плагина")
+                log.info(f"{LP} автовыставление: {g['name']} {_short(hours)} пропущен — в разделе {sub} уже {_cap(sub)} лотов плагина")
             else:
                 texts = _lot_texts(g["name"], hours)
                 try:
-                    lot_id, err = _create_lot(sub, g["funpay"].get("fields"), g["name"], texts, price,
-                                              bool(S.get("ap_active", True)))
-                except _RateLimited:
-                    limited = True
+                    lot_id, err = _create_or_wait(sub, g["funpay"].get("fields"), g["name"], texts, price,
+                                                  bool(S.get("ap_active", True)))
+                except _RateLimited as e:
+                    limited = str(e) or "—"
                     break
+                except _LoggedOut:
+                    raise  # остальные лоты упадут так же — останавливаемся
                 except Exception as e:
                     lot_id, err = None, str(e)[:160]
                 if lot_id:
                     _new_map(g, lot_id, hours, [texts[0], texts[1]], price)
-                    counts[sub] += 1
                     created += 1
                 else:
                     failed += 1
-                    reasons[f"{err} (напр. {g['name']}, {_short(hours)})"] += 1
+                    reasons[err] += 1
+                    examples.setdefault(err, f"{g['name']}, {_short(hours)}")
                     log.warning(f"{LP} автовыставление: {g['name']} {_short(hours)} (раздел {sub}) не создан — {err}")
                 time.sleep(CREATE_DELAY)
             step(i)
     except Exception as e:
         log.exception(f"{LP} автовыставление")
         reasons[str(e)[:160]] += 1
-    text = ("⛔️ <b>FunPay временно запретил создавать лоты</b> (обычно на несколько часов).\n"
+    text = ("⛔️ <b>FunPay временно запретил создавать лоты</b> (до суток, если за день создано много лотов).\n"
+            f"Ответ FunPay: «{esc(limited)}»\n"
             "Позже нажмите «Создать недостающие» — плагин дозальёт только оставшиеся.\n\n" if limited
             else "🤖 <b>Создание лотов завершено.</b>\n\n")
     text += (f"✅ Создано: <b>{created}</b>\n♻️ Восстановлено привязок: <b>{restored}</b>\n"
-             f"⏭ Пропущено (лимит раздела): <b>{skipped}</b>\n❌ Ошибок: <b>{failed}</b>")
+             + (f"⏭ Пропущено — в разделе уже лимит лотов плагина («🔢 Лимит»): <b>{skipped}</b>\n" if skipped else "")
+             + f"❌ Ошибок: <b>{failed}</b>")
     if reasons:
-        text += "\n\n<b>Причины:</b>\n" + "\n".join(f"• {n}× {esc(r)}" for r, n in reasons.most_common(5))
+        text += "\n\n<b>Причины:</b>\n" + "\n".join(
+            f"• {n}× {esc(r)}" + (f" (напр. {esc(examples[r])})" if r in examples else "")
+            for r, n in reasons.most_common(5))
     _save("created")
     _finish_job(chat_id, msg_id, text)
 
@@ -2280,7 +2347,9 @@ def scr_main(call, *_):
             f"📈 Прибыль: {_rub(_agg(SALES)['gross'])}\n"
             f"🛡 Автоскрытие: {_onoff(S.get('hide_no_stock'))}\n"
             f"{'🟢 Автовыдача включена' if S['enabled'] else '🔴 Автовыдача выключена'}\n\n"
-            f"🌐 {SITE}" + warn + (f"\n\n⬆️ Загружена v{upd} — перезапустите FPC." if upd else "") + job)
+            f"🌐 {SITE}" + warn + (f"\n\n⬆️ Загружена v{upd} — "
+                                     + ("перезапущу FPC, когда не будет заказов." if S.get("auto_update")
+                                        else "перезапустите FPC.") if upd else "") + job)
     _edit(call, text, _kb(
         [_btn("🎮 Создать привязку", "cg:0")],
         [_btn("🤖 Автовыставление лотов", "ac")],
@@ -2681,14 +2750,16 @@ def act_game_create(call, arg):
 
 def _manual_game(prod: dict, kind: str) -> dict:
     """Игра для общего раздела (Steam / «Прочие игры») — в формате записи карты."""
-    g = _fp_game(prod["id"])  # название из карты — по нему в «Прочих играх» выбирается игра в списке FunPay
+    g = _fp_game(prod["id"])
     return {"game_id": prod["id"], "name": (g or prod)["name"], "manual": kind,
             "funpay": {"subcategory_id": MANUAL[kind][0], "fields": {}}}
 
 
 def _manual_games(kind: str) -> list:
-    """Игры каталога для общего раздела: в Steam — любая, в «Прочие игры» — только без своего раздела в карте."""
-    return [p for p in _products() or [] if kind != "other" or not _fp_game(p["id"])]
+    """Игры каталога для общего раздела: в Steam — любая, в «Прочие игры» — только без своего раздела в карте
+    (игры из списка FunPay «Прочих игр» уже в карте, остальные встают в «Любая игра»). Без цены на сайте — нет:
+    лот вышел бы по минимальной цене, а аренда не прошла бы."""
+    return [p for p in _products() or [] if p.get("available") and (kind != "other" or not _fp_game(p["id"]))]
 
 
 def _manual_todo(kind: str, game_id: str) -> list:
@@ -2713,18 +2784,18 @@ def scr_manual(call, arg):
         left = len(_manual_todo(kind, p["id"]))
         rows.append([_btn(f"{'✅' if not left else '🔗' if left < total else '🆕'} {p['name'][:30]} · {total - left}/{total} "
                           f"· {int(p.get('inStock') or 0)} акк.", f"gxc:{kind}:{p['id']}")])
-    in_sub = sum(1 for m in MAPS if m.get("auto") and str(m.get("subcat")) == str(sub))
+    in_sub = _plugin_lots(sub)
     _edit(call, f"🤖 <b>Автовыставление → {label}</b>\n\n"
                 + ("Общий раздел Steam, тип «Аренда». " if kind == "steam" else
                    "Раздел «Аккаунты прочих игр», тип «Аренда». Здесь только игры, у которых на FunPay нет своего "
-                   "раздела (остальные выставляет обычное автовыставление). Игра выбирается в списке FunPay по "
-                   "названию, нет её там — «Другая игра». ")
+                   "раздела и нет строки в списке игр «Прочих игр» (игры из списка выставляет обычное "
+                   "автовыставление) — они встают в «Любая игра». ")
                 + "Нажмите на игру — плагин сразу выставит её на все сроки из «Длительностей», по тем же шаблонам, "
                   "что и обычное автовыставление. Лимит предложений в разделе общий на все игры — выбирайте только "
                   "нужные игры.\n\n"
                 + (f"🌍 Регион лота: <b>{esc(S.get('steam_region') or '')}</b>\n" if kind == "steam" else "")
                 + f"⏱ Сроки: <code>{_durs(S['ap_durations'])}</code>\n"
-                  f"🔢 Лотов плагина в разделе: <b>{in_sub}</b> из {S['lot_cap']}\n"
+                  f"🔢 Лотов плагина в разделе: <b>{in_sub}</b> из {_cap(sub)}\n"
                   f"<b>0/{len(S['ap_durations'])}</b> — на сколько сроков из «Длительностей» игра уже выставлена "
                   "(🆕 ни на один · 🔗 не на все · ✅ на все); <b>акк.</b> — свободных аккаунтов на MUVSell сейчас",
           _kb(*rows, _nav(f"gx:{kind}", page, len(items), 8),
@@ -3132,6 +3203,7 @@ def scr_params(call, *_):
     rows += [[_btn(f"✏️ Команда продления: {S['ext_word']}", "extw")],
              [_btn(f"🔐 Команда кода Steam Guard: {_code_word()}", "codew")],
              [_btn(f"{_onoff(S['en_msgs'])} 🇬🇧 Английский для !code, !help…", "t:en_msgs")],
+             [_btn(f"{_onoff(S['auto_update'])} ⬆️ Ставить обновления сами (перезапуск FPC)", "t:auto_update")],
              [_btn(f"{_onoff(S['notify_end'])} Сообщение покупателю об окончании аренды", "t:notify_end")]]
     _edit(call, "⚙️ <b>Прочее</b>\n\nНажмите, чтобы изменить.", _kb(*rows, _back("set")))
 
@@ -3202,7 +3274,7 @@ def scr_ac(call, *_):
             f"🔁 Пересоздать (лот удалён с FunPay или стоит в чужом разделе): "
             f"<b>{sum(1 for m in MAPS if _stale(m) and not m.get('manual'))}</b>\n\n"
             f"⏱ Длительности: <code>{_durs(S['ap_durations'])}</code>\n"
-            f"🔢 Лимит на раздел: <b>{S['lot_cap']}</b>\n➗ Наценка новых лотов: <b>{mk}</b>\n"
+            f"🔢 Лимит на раздел: <b>{S['lot_cap']}</b> (в «Прочих играх» — {_cap(OTHER_SUB)})\n➗ Наценка новых лотов: <b>{mk}</b>\n"
             f"👁 Создавать активными: {_onoff(S['ap_active'])}\n\n"
             + ("✏️ Новые лоты получают <b>свою</b> наценку и дальше не реагируют на смену глобальной. Вернуть их на "
                "глобальную можно кнопкой «Применить глобальную наценку ко ВСЕМ» в настройках.\n\n" if own is not None else
@@ -3345,7 +3417,7 @@ def act_ap_texts_reset(call, *_):
 
 
 TOGGLE_SCREENS = {"hide_no_stock": scr_main, "review_bonus": scr_bonus, "q_replace": scr_problems,
-                  "q_unbind": scr_problems, "notify_end": scr_params, "en_msgs": scr_params, "ap_active": scr_ac}
+                  "q_unbind": scr_problems, "notify_end": scr_params, "en_msgs": scr_params, "auto_update": scr_params, "ap_active": scr_ac}
 
 
 def act_toggle(call, key):
@@ -3632,6 +3704,17 @@ def _on_input(message):
         tg.set_state(chat_id, sent.message_id, uid, f"{P}:{next_state}")
 
 
+def _is_menu_cmd(message) -> bool:
+    return (message.text or "").strip().lstrip("/").lower() == "muvsell"
+
+
+def _on_menu_cmd(message):
+    """«MUVSell» / «/muvsell» в любом регистре — главное меню. Чужие сообщения отсекает Cardinal (reg_admin)."""
+    tg.clear_state(message.chat.id, message.from_user.id, True)  # бросаем недописанный ввод
+    # сообщение пользователя не отредактировать — _edit пришлёт меню новым сообщением
+    scr_main(SimpleNamespace(id=None, message=message, from_user=message.from_user))
+
+
 def _on_callback(call):
     _, action, *args = call.data.split(":", 2)
     ACTIONS[action](call, *args)
@@ -3658,6 +3741,8 @@ def init(c: "Cardinal"):
     if tg:
         tg.cbq_handler(_safe(scr_main), lambda q: q.data.startswith(f"{CBT.PLUGIN_SETTINGS}:{UUID}"))
         tg.cbq_handler(_safe(_on_callback), lambda q: q.data.startswith(f"{P}:"))
+        tg.msg_handler(_safe(_on_menu_cmd), func=_is_menu_cmd)  # раньше _on_input: перебивает начатый ввод
+        c.add_telegram_commands(UUID, [("muvsell", "меню MUVSell Rent", True)])
         tg.msg_handler(_safe(_on_input), func=lambda m: str((tg.get_state(m.chat.id, m.from_user.id) or {})
                                                             .get("state", "")).startswith(f"{P}:"))
     _stop.clear()

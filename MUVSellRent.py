@@ -28,6 +28,7 @@ from typing import TYPE_CHECKING
 from urllib.parse import urljoin
 
 import requests
+import urllib3
 from telebot.types import InlineKeyboardButton as B, InlineKeyboardMarkup as K
 
 from FunPayAPI.common.enums import MessageTypes, SubCategoryTypes
@@ -39,16 +40,18 @@ if TYPE_CHECKING:
 
 # NAME / VERSION / DESCRIPTION / CHANGELOG / COMPAT / MAP_FILE — по одной строке: их читает сайт (/api/plugins)
 NAME = "MUVSell Rent"
-VERSION = "1.2.1"
+VERSION = "1.2.6"
 DESCRIPTION = "Перепродажа аренды Steam-аккаунтов MUVSell на FunPay: автовыдача, коды Steam Guard, продления, синхронизация наличия и цен, автовыставление лотов, статистика."
 CREDITS = "@MUVSell"
 UUID = "ce1c0a2b-f7df-4a0d-90d3-31012b5ab720"
 SETTINGS_PAGE = True
-CHANGELOG = "Первая версия: автовыдача аренды MUVSell на FunPay, коды Steam Guard, продления (в том числе временным лотом по !продление), !кик, !пароль, !время, !данные, !помощь, синхронизация наличия и цен с наценкой (глобальной, по категориям и у каждой привязки), автовыставление лотов с редактором текстов, статистика и прибыль, аренды, карантин проблемных лотов, категории уведомлений, шаблоны сообщений с превью, диагностика. 1.0.1: лимит на раздел считает только лоты плагина, минимальная цена лота 1 ₽ — у дешёвых игр сроки больше не сливаются в одну цену. 1.0.2: «Создать недостающие» пересоздаёт лоты, удалённые с FunPay, и лоты, стоявшие в чужом разделе; исправлены разделы EA SPORTS FC 24 и The Forest; проблемные лоты — одним уведомлением. 1.0.3: новые стандартные тексты лотов со списком команд покупателя ({commands} собирается из настроек). 1.0.4: в «Удалить несколько» — «Отметить все» и подтверждение перед удалением. 1.0.5: в комментарий аренды на MUVSell уходит только номер заказа FunPay, без ника покупателя. 1.0.6: каждая покупка лота выдаёт новый аккаунт, продление — только командой !продление (временный лот); !друг и !прод убраны; новые тексты выдачи, предупреждения и описаний лотов — нажмите «Переписать тексты у существующих лотов», а если меняли шаблоны сами — проверьте их. 1.0.7: автовыставление в Steam «Аккаунты с играми» и в «Прочие игры» — любую игру, и ту, у которой на FunPay нет своего раздела: «Автовыставление» → «🎮 В Steam» / «🧩 В «Прочие игры»» → нажмите на игру, и она выставится на все сроки из «Длительностей» по тем же шаблонам (тип «Аренда», регион Steam настраивается); карточка игры тоже показывает сроки из «Длительностей»; при ошибке связи с MUVSell видна причина (таймаут, DNS, SSL, прокси); обновления плагина и карта разделов тоже идут через прокси из настроек. 1.0.8: в «Прочие игры» — только игры без своего раздела на FunPay (остальные выставляет обычное автовыставление). 1.0.9: свою команду для кода Steam Guard можно задать в «⚙️ Прочее» (любое слово, можно без «!») — если на !код у вас отвечает ещё и другой плагин. У каждой привязки теперь свой ID (rentM-1001): плагин сам дописывает его в конец описания лота и находит оплаченный лот по нему, а не только по названию — одинаковые или переименованные лоты больше не путаются. 1.1.0: ответы покупателю на английском — кто пишет английские команды (!code, !help, !time…), тому плагин отвечает по-английски: коды, время, продления, предупреждения и следующая выдача; в сообщении с выдачей — строка «🇬🇧 English? Type !help». Выключается в «⚙️ Прочее». 1.1.2: если FunPay отвечает «Много предложений, подождите» (дневной лимит на создание лотов), автовыставление сразу останавливается с понятным сообщением, а не выдаёт ошибку на каждый лот — «Создать недостающие» позже дозальёт оставшиеся. 1.1.3: автовыставление идёт по срокам — сначала все игры на первый срок, потом на следующий, так что при лимите FunPay ни одна игра не остаётся без лотов; в «Прочих играх» лимит — 60 лотов плагина вместо 20 (столько там разрешает FunPay): Raft, Big Walk, The Binding of Isaac, Detroit, Stray больше не пропускаются — нажмите «Создать недостающие». Продление: понимает и !продлить, и срок словами (!продление 3 часа, !продление на 1 день) — раньше на такое плагин молчал или отвечал «не вижу аренды». 1.1.4: обновления применяются сами — скачав новую версию, плагин перезапускает FPC, когда 3 минуты нет заказов и команд покупателей (выключается в «⚙️ Прочее»). 1.1.5: меню плагина открывается командой MUVSell (или /muvsell, регистр не важен) в Telegram-боте Cardinal. 1.1.6: «лимит раздела» больше не срабатывает зря — лоты, удалённые с FunPay, не считаются, и «Создать недостающие» пересоздаёт их все, а не один; на «Много предложений» плагин ждёт минуту и пробует ещё раз, а если стоп — показывает ответ FunPay дословно; другие ошибки со словом «подождите» больше не останавливают выставление; в «Прочие игры» плагин больше не ставит игры, которых нет в списке FunPay (раньше они уходили в «Любая игра»), — ручное выставление туда убрано, такие игры выставляйте в Steam «Аккаунты с играми»; там же — только игры с ценой на сайте. Лоты, уже стоящие в «Любая игра», плагин не трогает — удалите их в «🔗 Привязки», если не нужны. 1.1.7: кнопка «🧩 В «Прочие игры»» вернулась — игры без своего раздела на FunPay и без строки в списке «Прочих игр» (SOS OPS!, Green Hell, YAPYAP и др.) выставляются туда как «Любая игра»: нажмите на игру — лоты на все сроки из «Длительностей». Игры из списка FunPay по-прежнему выставляет обычное автовыставление под своим названием. 1.1.8: «Много предложений» в одном разделе FunPay больше не останавливает всё автовыставление как «дневной лимит» — плагин пропускает только этот раздел и выставляет игры в остальных; в итоге видно, какой раздел полон и сколько лотов пропущено. Стоп — только если подряд отказали три разных раздела (тогда это и правда дневной лимит аккаунта). 1.1.9: о новых играх на MUVSell плагин пишет сам — одно уведомление со списком игр, которых у вас ещё нет на FunPay, и кнопкой «🚀 Выставить»: лоты на все сроки из «Длительностей» по вашим шаблонам и наценке. Игры без своего раздела FunPay — с подсказкой, где выставить вручную. Выключается в категориях уведомлений («🆕 Новые игры на MUVSell»). 1.2.0: аварийное скрытие — если MUVSell не отвечает 5 минут подряд (сайт или API лежит), плагин сам снимает с продажи все свои лоты и пишет об этом, а когда связь вернётся — возвращает их (выключается в «⚙️ Настройки» → «🚨 Скрывать при сбое MUVSell»). В главном меню — кнопка «🙈 Скрыть все лоты»: снимает все лоты плагина с продажи, пока не нажмёте «👁 Вернуть все лоты». 1.2.1: переменная {stock} в текстах лотов — сколько аккаунтов игры свободно на MUVSell. Впишите её в название или описание («📝 Тексты лотов», например «… | В наличии: {stock} акк. | …»), и плагин сам обновляет число у лотов автовыставления, когда наличие меняется."
+CHANGELOG = "Первая версия: автовыдача аренды MUVSell на FunPay, коды Steam Guard, продления (в том числе временным лотом по !продление), !кик, !пароль, !время, !данные, !помощь, синхронизация наличия и цен с наценкой (глобальной, по категориям и у каждой привязки), автовыставление лотов с редактором текстов, статистика и прибыль, аренды, карантин проблемных лотов, категории уведомлений, шаблоны сообщений с превью, диагностика. 1.0.1: лимит на раздел считает только лоты плагина, минимальная цена лота 1 ₽ — у дешёвых игр сроки больше не сливаются в одну цену. 1.0.2: «Создать недостающие» пересоздаёт лоты, удалённые с FunPay, и лоты, стоявшие в чужом разделе; исправлены разделы EA SPORTS FC 24 и The Forest; проблемные лоты — одним уведомлением. 1.0.3: новые стандартные тексты лотов со списком команд покупателя ({commands} собирается из настроек). 1.0.4: в «Удалить несколько» — «Отметить все» и подтверждение перед удалением. 1.0.5: в комментарий аренды на MUVSell уходит только номер заказа FunPay, без ника покупателя. 1.0.6: каждая покупка лота выдаёт новый аккаунт, продление — только командой !продление (временный лот); !друг и !прод убраны; новые тексты выдачи, предупреждения и описаний лотов — нажмите «Переписать тексты у существующих лотов», а если меняли шаблоны сами — проверьте их. 1.0.7: автовыставление в Steam «Аккаунты с играми» и в «Прочие игры» — любую игру, и ту, у которой на FunPay нет своего раздела: «Автовыставление» → «🎮 В Steam» / «🧩 В «Прочие игры»» → нажмите на игру, и она выставится на все сроки из «Длительностей» по тем же шаблонам (тип «Аренда», регион Steam настраивается); карточка игры тоже показывает сроки из «Длительностей»; при ошибке связи с MUVSell видна причина (таймаут, DNS, SSL, прокси); обновления плагина и карта разделов тоже идут через прокси из настроек. 1.0.8: в «Прочие игры» — только игры без своего раздела на FunPay (остальные выставляет обычное автовыставление). 1.0.9: свою команду для кода Steam Guard можно задать в «⚙️ Прочее» (любое слово, можно без «!») — если на !код у вас отвечает ещё и другой плагин. У каждой привязки теперь свой ID (rentM-1001): плагин сам дописывает его в конец описания лота и находит оплаченный лот по нему, а не только по названию — одинаковые или переименованные лоты больше не путаются. 1.1.0: ответы покупателю на английском — кто пишет английские команды (!code, !help, !time…), тому плагин отвечает по-английски: коды, время, продления, предупреждения и следующая выдача; в сообщении с выдачей — строка «🇬🇧 English? Type !help». Выключается в «⚙️ Прочее». 1.1.2: если FunPay отвечает «Много предложений, подождите» (дневной лимит на создание лотов), автовыставление сразу останавливается с понятным сообщением, а не выдаёт ошибку на каждый лот — «Создать недостающие» позже дозальёт оставшиеся. 1.1.3: автовыставление идёт по срокам — сначала все игры на первый срок, потом на следующий, так что при лимите FunPay ни одна игра не остаётся без лотов; в «Прочих играх» лимит — 60 лотов плагина вместо 20 (столько там разрешает FunPay): Raft, Big Walk, The Binding of Isaac, Detroit, Stray больше не пропускаются — нажмите «Создать недостающие». Продление: понимает и !продлить, и срок словами (!продление 3 часа, !продление на 1 день) — раньше на такое плагин молчал или отвечал «не вижу аренды». 1.1.4: обновления применяются сами — скачав новую версию, плагин перезапускает FPC, когда 3 минуты нет заказов и команд покупателей (выключается в «⚙️ Прочее»). 1.1.5: меню плагина открывается командой MUVSell (или /muvsell, регистр не важен) в Telegram-боте Cardinal. 1.1.6: «лимит раздела» больше не срабатывает зря — лоты, удалённые с FunPay, не считаются, и «Создать недостающие» пересоздаёт их все, а не один; на «Много предложений» плагин ждёт минуту и пробует ещё раз, а если стоп — показывает ответ FunPay дословно; другие ошибки со словом «подождите» больше не останавливают выставление; в «Прочие игры» плагин больше не ставит игры, которых нет в списке FunPay (раньше они уходили в «Любая игра»), — ручное выставление туда убрано, такие игры выставляйте в Steam «Аккаунты с играми»; там же — только игры с ценой на сайте. Лоты, уже стоящие в «Любая игра», плагин не трогает — удалите их в «🔗 Привязки», если не нужны. 1.1.7: кнопка «🧩 В «Прочие игры»» вернулась — игры без своего раздела на FunPay и без строки в списке «Прочих игр» (SOS OPS!, Green Hell, YAPYAP и др.) выставляются туда как «Любая игра»: нажмите на игру — лоты на все сроки из «Длительностей». Игры из списка FunPay по-прежнему выставляет обычное автовыставление под своим названием. 1.1.8: «Много предложений» в одном разделе FunPay больше не останавливает всё автовыставление как «дневной лимит» — плагин пропускает только этот раздел и выставляет игры в остальных; в итоге видно, какой раздел полон и сколько лотов пропущено. Стоп — только если подряд отказали три разных раздела (тогда это и правда дневной лимит аккаунта). 1.1.9: о новых играх на MUVSell плагин пишет сам — одно уведомление со списком игр, которых у вас ещё нет на FunPay, и кнопкой «🚀 Выставить»: лоты на все сроки из «Длительностей» по вашим шаблонам и наценке. Игры без своего раздела FunPay — с подсказкой, где выставить вручную. Выключается в категориях уведомлений («🆕 Новые игры на MUVSell»). 1.2.0: аварийное скрытие — если MUVSell не отвечает 5 минут подряд (сайт или API лежит), плагин сам снимает с продажи все свои лоты и пишет об этом, а когда связь вернётся — возвращает их (выключается в «⚙️ Настройки» → «🚨 Скрывать при сбое MUVSell»). В главном меню — кнопка «🙈 Скрыть все лоты»: снимает все лоты плагина с продажи, пока не нажмёте «👁 Вернуть все лоты». 1.2.1: переменная {stock} в текстах лотов — сколько аккаунтов игры свободно на MUVSell. Впишите её в название или описание («📝 Тексты лотов», например «… | В наличии: {stock} акк. | …»), и плагин сам обновляет число у лотов автовыставления, когда наличие меняется. 1.2.2: плагин работает на любом хостинге без прокси — если сервер Cardinal не достаёт до muvsell.store (например, Hetzner в Финляндии и Германии), плагин сам идёт через запасной адрес MUVSell на Cloudflare. Если прокси из настроек не отвечает (не подключается, отказ, неверный логин), плагин идёт без него и 10 минут не ждёт мёртвый прокси — заказы не встают. Прокси можно вписать и как ip:порт:логин:пароль; при сохранении плагин проверяет прокси, прямую связь и запасной адрес. 1.2.3: возвраты больше не включаются в прибыль — статистика теперь показывает точную цифру. Добавлена кнопка «🗑 Сбросить статистику» в меню статистики — удаляет весь журнал продаж. 1.2.4: автовыставление идёт по играм — у игры сразу выставляются все сроки из «Длительностей», и только потом следующая игра (раньше — сначала все игры на 1 час, потом все на следующий срок). 1.2.5: «Создать недостающие» сначала сверяет лоты с FunPay — лоты, удалённые на сайте FunPay в обход плагина (например, все лоты на 1 час), пересоздаются; раньше плагин считал их выставленными и пропускал. 1.2.6: оплаченный лот продления всегда удаляется с FunPay (раньше иногда оставался и занимал место в разделе); оплата лота продления, пришедшая в последние секунды, когда лот уже снят, тоже продлевает аренду; !код и !данные больше не задерживают заказы и сообщения, пока MUVSell не отвечает; после удаления лотов Steam и «Прочих игр» счётчик «лотов без привязки» больше не врёт; карточка привязки показывает, почему лот снят: сбой MUVSell или «🙈 Скрыть все лоты»."
 COMPAT = "FunPay Cardinal 0.1.17.15"
 MAP_FILE = "muvsell_funpay_map.json"
 
 SITE = "https://muvsell.store"
+MIRROR = "https://cold-band-9582.manimanimanimani4444.workers.dev"  # Cloudflare Worker → SITE (только /api и /downloads)
+# ponytail: бесплатный Workers — 100k запросов в сутки на всех (~30 реселлеров без связи с SITE), больше — платный план
 API_BASE = SITE + "/api/v1"
 INFO_URL = SITE + "/api/plugin/info"
 MAP_URL = SITE + "/downloads/" + MAP_FILE
@@ -317,7 +320,8 @@ _costs: dict = {}       # (game_id, часы) → (ts, ₽)
 _market: dict = {}      # раздел FunPay → (ts, [(цена, описание)])
 _tmp: dict = {}         # черновики по id пользователя Telegram
 _state = {"low": False, "update": None, "job": None, "job_text": "", "poll_at": 0.0, "price_at": 0.0, "busy_at": 0.0,
-          "api_bad": 0.0, "api_down": False}  # api_bad — с какого времени MUVSell не отвечает; api_down — о сбое написали
+          "api_bad": 0.0, "api_down": False,  # api_bad — с какого времени MUVSell не отвечает; api_down — о сбое написали
+          "down": {}}  # маршрут к MUVSell (px / direct / mirror) → до какого времени его пропускаем, см. _req
 _cache = {"api": None, "products": (0.0, None), "map": (0.0, None), "bal": (0.0, None), "rate": (0.0, 90.0)}
 
 
@@ -543,25 +547,63 @@ HUMAN = {
     "bad_request": "MUVSell отклонил запрос",
     "wait": "слишком часто",
     "no_account": "аренда создана, но аккаунт не выдан — выдайте вручную с сайта",
-    "net": "нет связи с muvsell.store (если не проходит — включите прокси: Настройки → «Прокси MUVSell»)",
+    "net": "нет связи с MUVSell ни напрямую, ни через запасной адрес (проверьте интернет на сервере Cardinal "
+           "или задайте прокси: Настройки → «Прокси MUVSell»)",
 }
 
 
+DIRECT = {"http": None, "https": None}  # перекрывает прокси сессии — запрос напрямую
+ROUTE_DOWN_SEC = 600                    # маршрут не ответил — столько секунд его пропускаем, не ждём таймаут на каждом запросе
+ROUTES = {"px": "прокси", "direct": "muvsell.store напрямую", "mirror": "запасной адрес MUVSell"}
+
+
+def _unsent(e) -> bool:
+    """Соединение даже не открылось (таймаут подключения, отказ, DNS, прокси) — запрос до MUVSell не дошёл."""
+    reason = getattr(e.args[0], "reason", None) if e.args else None
+    return (isinstance(e, (requests.exceptions.ConnectTimeout, requests.exceptions.ProxyError))
+            or isinstance(reason, urllib3.exceptions.NewConnectionError))
+
+
+def _req(http, method: str, url: str, fallback: bool = True, **kw):
+    """Запрос к MUVSell по очереди: прокси из настроек → напрямую → зеркало на Cloudflare (MIRROR).
+    Хостинги, которые РФ режет (Hetzner и др.), до muvsell.store не достают, а до Cloudflare — да.
+    POST идёт дальше, только если соединение не открылось: запрос не дошёл, баланс дважды не спишется.
+    fallback=False — только первый маршрут (проверка прокси или прямой связи)."""
+    px = kw.get("proxies") or getattr(http, "proxies", None)
+    routes = ([("px", url, kw)] if px else []) + [("direct", url, {**kw, "proxies": DIRECT})]
+    if MIRROR and url.startswith(SITE):
+        routes.append(("mirror", MIRROR + url[len(SITE):], {**kw, "proxies": DIRECT}))
+    if not fallback:
+        routes = routes[:1]
+    live = [r for r in routes if time.time() >= _state["down"].get(r[0], 0)] or routes
+    for i, (name, u, k) in enumerate(live):
+        try:
+            return http.request(method, u, **k)
+        except requests.exceptions.ConnectionError as e:
+            if i == len(live) - 1 or not (method == "GET" or _unsent(e)):
+                raise
+            _state["down"][name] = time.time() + ROUTE_DOWN_SEC
+            log.warning(f"{LP} {ROUTES[name]} не отвечает ({str(e)[-150:]}) — {ROUTE_DOWN_SEC // 60} мин хожу через "
+                        f"{ROUTES[live[i + 1][0]]}")
+
+
 class Api:
-    def __init__(self, key: str, proxies: dict | None = None):
+    def __init__(self, key: str, proxies: dict | None = None, fallback: bool = True, tries: int = 3):
         self.s = requests.Session()
         self.s.headers.update({"X-API-Key": key, "Accept": "application/json", "User-Agent": f"MUVSellRent/{VERSION}"})
         self.s.proxies.update(proxies or {})
+        self.fallback, self.tries = fallback, tries  # проверка связи — один маршрут и без повторов
         self.error = ""  # текст последней ошибки от сервера
 
     def call(self, method: str, path: str, body=None):
         """(ответ, None) или (None, код ошибки). POST после отправки не повторяем: повтор мог бы списать баланс дважды."""
-        for attempt in range(3):
+        last = self.tries - 1
+        for attempt in range(self.tries):
             try:
-                r = self.s.request(method, API_BASE + path, json=body, timeout=TIMEOUT)
+                r = _req(self.s, method, API_BASE + path, self.fallback, json=body, timeout=TIMEOUT)
             except requests.RequestException as e:
                 self.error = str(e)[-200:]  # причина (таймаут, DNS, SSL) — в конце текста requests
-                if method != "GET" or attempt == 2:
+                if method != "GET" or attempt == last:
                     return None, "net"
                 time.sleep(2)
                 continue
@@ -574,10 +616,10 @@ class Api:
                 return data, None
             self.error = str((data.get("error") if isinstance(data, dict) else "") or f"HTTP {r.status_code}")[:200]
             # лимит API срабатывает до обработки — повтор безопасен; 429 с объяснением — это ответ сервиса, не лимит
-            if r.status_code == 429 and attempt < 2 and not re.search(r"через|уже", self.error):
+            if r.status_code == 429 and attempt < last and not re.search(r"через|уже", self.error):
                 time.sleep(5)
                 continue
-            if r.status_code >= 500 and method == "GET" and attempt < 2:
+            if r.status_code >= 500 and method == "GET" and attempt < last:
                 time.sleep(2)
                 continue
             return None, ERRORS.get(r.status_code, f"http_{r.status_code}")
@@ -626,7 +668,11 @@ def _proxies() -> dict:
         return dict(getattr(cardinal, "proxy", None) or {})
     p = (S.get("proxy") or "").strip()
     if mode == "custom" and p:
-        p = p if "://" in p else "http://" + p
+        scheme, _, rest = p.rpartition("://")
+        parts = rest.split(":")
+        if "@" not in rest and len(parts) == 4:  # ip:порт:логин:пароль — так выдают многие магазины прокси
+            rest = f"{parts[2]}:{parts[3]}@{parts[0]}:{parts[1]}"
+        p = f"{scheme or 'http'}://{rest}"
         return {"http": p, "https": p}
     return {}
 
@@ -1231,19 +1277,33 @@ def _ext_ready(rec: dict, e: dict) -> str:
               minutes=max(1, math.ceil((e["until"] - time.time()) / 60)))
 
 
+def _del_ext_lot(lot_id):
+    try:
+        cardinal.account.delete_lot(int(lot_id))
+    except Exception as err:
+        log.warning(f"{LP} лот продления {lot_id} не удалён: {err}")
+
+
 def _drop_ext(tag: str):
+    """Удаляет лот продления, а метку держит ещё сутки (gone): оплата в последние секунды приходит уже после удаления."""
     with _lock:
-        e = EXT.pop(tag, None)
+        e = EXT.get(tag)
+        if not e or e.get("gone"):
+            return
+        e["gone"] = time.time()
     _save("extlots")
-    if e:
-        try:
-            cardinal.account.delete_lot(int(e["lot_id"]))
-        except Exception as err:
-            log.warning(f"{LP} лот продления {e['lot_id']} не удалён: {err}")
+    _del_ext_lot(e["lot_id"])
 
 
 def _ext_cleanup():
-    for tag in [t for t, e in list(EXT.items()) if e.get("until", 0) < time.time()]:
+    now = time.time()
+    with _lock:
+        old = [t for t, e in EXT.items() if e.get("gone", now) < now - 86400]
+        for t in old:
+            del EXT[t]
+    if old:
+        _save("extlots")
+    for tag in [t for t, e in list(EXT.items()) if not e.get("gone") and e.get("until", 0) < now]:
         _drop_ext(tag)
 
 
@@ -1261,7 +1321,7 @@ def _cmd_ext_lot(chat_id, buyer: str, arg: str):
     if not hours:
         return _send(chat_id, _t("ext_usage", _lang(buyer), word=word))
     same = next((e for e in EXT.values() if e["rid"] == rec["id"] and int(e["hours"]) == hours
-                 and e["until"] > time.time() + 60), None)
+                 and not e.get("gone") and e["until"] > time.time() + 60), None)
     if same:  # лот на этот срок уже ждёт оплату — повторяем ссылку
         return _send(chat_id, _ext_ready(rec, same))
     _bg(_make_ext_lot, chat_id, buyer, rec, m, hours)
@@ -1310,9 +1370,11 @@ def _ext_for(order):
 
 
 def _pay_ext(order, tag: str, e: dict):
-    _bg(_drop_ext, tag)  # лот больше не нужен
     with _lock:
         EXT.pop(tag, None)  # сразу, чтобы второй заказ того же лота не продлил дважды
+    _save("extlots")
+    if not e.get("gone"):
+        _bg(_del_ext_lot, e["lot_id"])  # лот больше не нужен
     api = _api()
     hours = int(e["hours"]) * max(1, int(order.amount or 1))
     rec = _rec(e["rid"])
@@ -1434,8 +1496,8 @@ COMMANDS = [  # (синонимы, обработчик(chat_id, buyer, arg), в
     (("!помощь", "!команды", "!help", "!commands"), _cmd_help, lambda: True),
     (("!extend",), _cmd_ext_lot, lambda: S.get("ext_cmd")),
     (("!продлить", "!продли"), _cmd_ext_lot, lambda: S.get("ext_cmd") and (S.get("ext_word") or "!продление") == "!продление"),
-    (("!кик", "!kick", "!выкинуть"), lambda c, b, a: _bg(_cmd_kick, c, b, a), lambda: S.get("buyer_cmds")),
-    (("!пароль", "!password", "!pass"), lambda c, b, a: _bg(_cmd_password, c, b, a), lambda: S.get("buyer_cmds")),
+    (("!кик", "!kick", "!выкинуть"), _cmd_kick, lambda: S.get("buyer_cmds")),
+    (("!пароль", "!password", "!pass"), _cmd_password, lambda: S.get("buyer_cmds")),
 ]
 
 
@@ -1455,7 +1517,7 @@ def _on_command(chat_id, buyer, text: str):
     if handler:
         _state["busy_at"] = time.time()
         _set_lang(buyer, cmd)  # английская команда — дальше отвечаем ему по-английски, русская — по-русски
-        handler(chat_id, buyer, arg)
+        _bg(handler, chat_id, buyer, arg)  # MUVSell лежит — запрос висит до ~80 с, поток событий Cardinal не держим
 
 
 def _on_review(msg):
@@ -1763,13 +1825,13 @@ def _vt(v) -> tuple:
 def _check_update():
     """Скачивает новую версию плагина с muvsell.store; применится после перезапуска FPC."""
     try:
-        info = requests.get(INFO_URL, timeout=20, proxies=_proxies()).json()
+        info = _req(requests, "GET", INFO_URL, timeout=20, proxies=_proxies()).json()
         ver = str(info.get("version") or "")
         if _vt(ver) <= _vt(VERSION) or ver == _state["update"]:
             return
         # .py отдаётся как application/octet-stream — кодировку не угадываем, файл всегда UTF-8
-        code = requests.get(urljoin(SITE, info.get("download_url") or "/downloads/MUVSellRent.py"),
-                            timeout=60, proxies=_proxies()).content.decode("utf-8")
+        code = _req(requests, "GET", urljoin(SITE, info.get("download_url") or "/downloads/MUVSellRent.py"),
+                    timeout=60, proxies=_proxies()).content.decode("utf-8")
         if f'VERSION = "{ver}"' not in code or "BIND_TO_PRE_INIT" not in code:
             return log.warning(f"{LP} обновление v{ver}: скачан не плагин — пропускаю")
         shutil.copy2(SELF_PATH, SELF_PATH + ".bak")
@@ -1834,7 +1896,7 @@ def _fp_map(force: bool = False) -> dict:
     ts, data = _cache["map"]
     if force or not data or time.time() - ts > 3600:
         try:
-            r = requests.get(MAP_URL, timeout=TIMEOUT, proxies=_proxies())
+            r = _req(requests, "GET", MAP_URL, timeout=TIMEOUT, proxies=_proxies())
             fresh = r.json() if r.ok else None
             if isinstance(fresh, dict) and fresh.get("games"):
                 data = fresh
@@ -1879,11 +1941,11 @@ def _plugin_lots(sub) -> int:
 
 
 def _plan(durations=None) -> list:
-    """Недостающие лоты: сначала все игры на первый срок, потом на второй… — упрёмся в лимит раздела или дневной
-    лимит FunPay, и ни одна игра не останется совсем без лотов (в «Прочих играх» их 8 на один лимит)."""
+    """Недостающие лоты по играм: у игры сразу все сроки из «Длительностей», потом следующая игра — начатая игра
+    выставляется целиком, а не по одному сроку во всех играх."""
     have = {(m["game_id"], int(m["hours"])) for m in MAPS if not _stale(m) and not m.get("manual")}
     games = _sellable()
-    return [(g, p, h) for h in durations or S["ap_durations"] for g, p in games if (g["game_id"], h) not in have]
+    return [(g, p, h) for g, p in games for h in durations or S["ap_durations"] if (g["game_id"], h) not in have]
 
 
 def _ckey(g: dict, hours: int) -> str:
@@ -2285,7 +2347,7 @@ def _run_delete(chat_id, msg_id, targets=None, lots: bool = True, back: str = "a
                 HIDDEN.pop(str(m["lot_id"]), None)
                 PROBLEMS.pop(str(m["lot_id"]), None)
                 if lots:
-                    CREATED.pop(f"{m['game_id']}:{m['hours']}", None)
+                    CREATED.pop(_ckey(m, int(m["hours"])), None)
             deleted += 1
         else:
             failed += 1
@@ -2335,11 +2397,11 @@ def _agg(lst: list) -> dict:
     sold = _sold(lst)
     orders = {s["order"] for s in sold}
     refunded = {s["order"] for s in sold if s.get("refunded")}
-    rev = sum(s["rev"] for s in lst)
-    cost = sum(s["cost"] for s in lst)
+    rev = sum(s["rev"] for s in lst if not s.get("refunded"))  # возвраты не считаем выручкой
+    cost = sum(s["cost"] for s in lst if not s.get("refunded"))  # и расходом тоже
     refund = sum(s["rev"] for s in lst if s.get("refunded"))
-    return {"n": len(orders), "rev": rev, "cost": cost, "gross": rev - cost, "refunds": len(refunded),
-            "refund": refund, "net": rev - cost - refund}
+    return {"n": len(orders) - len(refunded), "rev": rev, "cost": cost, "gross": rev - cost, "refunds": len(refunded),
+            "refund": refund, "net": rev - cost}
 
 
 def _profit(lst: list) -> float:
@@ -2631,7 +2693,8 @@ def scr_map(call, lot_id):
         return scr_maps(call)
     prod = next((p for p in _products() or [] if p["id"] == m["game_id"]), None)
     status = {"⏸": "⏸ выключен вручную", "🚑": "🚑 на паузе после ошибки FunPay",
-              "⛔": "⛔ снят с продажи: " + {"stock": "нет аккаунтов", "balance": "низкий баланс"}.get(
+              "⛔": "⛔ снят с продажи: " + {"stock": "нет аккаунтов", "balance": "низкий баланс",
+                                                "api": "MUVSell не отвечает", "manual": "«🙈 Скрыть все лоты»"}.get(
                   HIDDEN.get(str(lot_id)), "?"), "✅": "✅ активен"}[_map_status(m)]
     p = PROBLEMS.get(str(lot_id))
     hours = int(m["hours"])
@@ -2853,7 +2916,8 @@ def scr_game(call, game_id):
         return scr_games(call)
     api, g = _api(), _fp_game(game_id)
     sub = int(g["funpay"]["subcategory_id"]) if g else None
-    have = {int(m["hours"]): m for m in MAPS if m["game_id"] == game_id and not m.get("manual")}
+    # удалённый с FunPay лот — снова «🆕»: кнопка пересоздаст его
+    have = {int(m["hours"]): m for m in MAPS if m["game_id"] == game_id and not m.get("manual") and not _stale(m)}
     pm = {"subcat": sub, "markup": S.get("ap_own")}
     lines, rows, row = [], [], []
     for h in S["ap_durations"]:
@@ -2884,11 +2948,10 @@ def act_game_create(call, arg):
     prod = next((p for p in _products() or [] if p["id"] == game_id), None)
     if not g or not prod:
         return _alert(call, "Для этой игры нет раздела FunPay — привяжите свой лот")
-    have = {int(m["hours"]) for m in MAPS if m["game_id"] == game_id and not m.get("manual")}
-    todo = [h for h in (S["ap_durations"] if hours == "all" else [int(hours)]) if h not in have]
-    if not todo:
-        return scr_game(call, game_id)
-    _start_job(call, "Создание лотов", _run_create, [(g, prod, h) for h in todo])
+    def plan():
+        have = {int(m["hours"]) for m in MAPS if m["game_id"] == game_id and not m.get("manual") and not _stale(m)}
+        return [(g, prod, h) for h in (S["ap_durations"] if hours == "all" else [int(hours)]) if h not in have]
+    _start_job(call, "Создание лотов", _run_create_checked, plan, {game_id})
 
 
 def _manual_game(prod: dict, kind: str) -> dict:
@@ -3077,7 +3140,8 @@ def scr_stats(call, p="all"):
                           [_btn(PERIODS[k], f"st:{k}") for k in ("30", "90", "all")],
                           [_btn("🏆 Топ игр", f"sx:games:{p}"), _btn("👥 Покупатели", f"sx:buyers:{p}")],
                           [_btn("⏳ Длительности", f"sx:hours:{p}"), _btn("⏰ Активность", f"sx:activity:{p}")],
-                          [_btn("📈 По дням", f"sx:days:{p}"), _btn("🔗 Привязки", f"sx:maps:{p}")], _back()))
+                          [_btn("📈 По дням", f"sx:days:{p}"), _btn("🔗 Привязки", f"sx:maps:{p}")],
+                          [_btn("🗑 Сбросить статистику", "scl")], _back()))
 
 
 def scr_stats_detail(call, arg):
@@ -3121,6 +3185,21 @@ def scr_profit(call, *_):
                 f"📊 Маржа: {(a['gross'] / a['rev'] * 100 if a['rev'] else 0):.1f}%\n\n"
                 f"📅 Сегодня: +{_rub(today['net'])}\n\n<b>По дням:</b>\n" + (by_day or "  продаж за 7 дней нет"),
           _kb([_btn("📊 Подробная статистика", "st:all")], [_btn("📈 Динамика по дням", "sx:days:30")], _back()))
+
+
+def act_stats_clear(call, *_):
+    """Подтверждение сброса статистики."""
+    _edit(call, "🗑 <b>Сбросить статистику?</b>\n\nУдалится весь журнал продаж. Это нельзя отменить.",
+          _kb([_btn("✅ Да, сбросить", "scly"), _btn("❌ Отмена", "st:all")]))
+
+
+def act_stats_clear_yes(call, *_):
+    """Очистка журнала продаж."""
+    with _lock:
+        SALES.clear()
+    _save("sales")
+    _edit(call, "✅ Статистика сброшена.", _kb(_back("st:all")))
+
 
 
 # ---------------------------------------------------------------- Telegram: настройки
@@ -3203,15 +3282,16 @@ def scr_proxy(call, *_):
     def opt(m, label):
         return [_btn(("🔘 " if mode == m else "⚪️ ") + label, f"pxm:{m}")]
     _edit(call, f"🌐 <b>Прокси для запросов к MUVSell</b>\n\nСейчас: {_proxy_label()}\n\n"
-                "Нужен, если сервер, где работает FunPay Cardinal, не видит muvsell.store.",
+                "Обычно не нужен: если сервер FunPay Cardinal не видит muvsell.store, плагин сам ходит через "
+                "запасной адрес MUVSell (Cloudflare). Если прокси перестанет отвечать, плагин пойдёт без него.",
           _kb(opt("none", "Без прокси"), opt("fpc", "🤖 Прокси FunPay Cardinal"), opt("custom", "✍️ Свой прокси"),
               _back("set")))
 
 
 def act_proxy_mode(call, mode):
     if mode == "custom":
-        return _ask(call, "proxy", "✍️ <b>Свой прокси</b>\n\nФормат: <code>http://логин:пароль@ip:порт</code> "
-                                   "или <code>socks5://ip:порт</code>:", "px")
+        return _ask(call, "proxy", "✍️ <b>Свой прокси</b>\n\nФормат: <code>http://логин:пароль@ip:порт</code>, "
+                                   "<code>ip:порт:логин:пароль</code> или <code>socks5://ip:порт</code>:", "px")
     S["proxy_mode"] = mode
     _save("settings")
     scr_proxy(call)
@@ -3484,10 +3564,58 @@ def scr_preview(call, page="0"):
 
 
 def act_create(call, *_):
-    plan = _plan()
+    _start_job(call, "Создание лотов", _run_create_checked, _plan)
+
+
+def _mark_gone(game_ids=None) -> int:
+    """Лоты плагина, которых уже нет среди ваших лотов раздела на FunPay (удалили на сайте FunPay, сняла модерация), —
+    в «удалённые с FunPay», чтобы их пересоздали. Сам плагин узнаёт об удалении, только когда трогает лот. Выключенные
+    лоты в списке раздела есть — их не задевает. Раздел не открылся или в нём не нашлось ни одного лота плагина
+    (похоже на сбой страницы, а не на удаление) — раздел не трогаем: лучше не пересоздать, чем выставить дубли."""
+    by_sub = {}
+    for m in MAPS:
+        if m.get("auto") and not m.get("manual") and not _stale(m) and (game_ids is None or m["game_id"] in game_ids):
+            by_sub.setdefault(str(m["subcat"]), []).append(m)
+    gone = 0
+    for sub, maps in by_sub.items():
+        try:
+            mine = {str(lot.id) for lot in cardinal.account.get_my_subcategory_lots(int(sub))}
+        except Exception as e:
+            log.warning(f"{LP} сверка раздела {sub} с FunPay: {e}")
+            continue
+        finally:
+            time.sleep(1)  # 24+ разделов подряд — FunPay не любит спешку
+        lost = [m for m in maps if str(m["lot_id"]) not in mine]
+        if len(lost) == len(maps):
+            log.warning(f"{LP} сверка раздела {sub}: на FunPay не нашлось ни одного из {len(maps)} лотов плагина — пропускаю")
+            continue
+        now = time.time()
+        with _lock:
+            for m in lost:
+                PROBLEMS[str(m["lot_id"])] = {"n": 1, "game": _mlabel(m), "err": "Предложение не найдено.",
+                                              "missing": True, "at": now, "until": now}
+        gone += len(lost)
+    if gone:
+        _save("problems")
+        log.info(f"{LP} сверка с FunPay: {gone} лот(ов) плагина удалены с FunPay — пересоздаю")
+    return gone
+
+
+def _run_create_checked(chat_id, msg_id, make_plan, game_ids=None):
+    """Создание после сверки с FunPay: лоты, удалённые в обход плагина, тоже попадают в план."""
+    _progress(chat_id, msg_id, "Создание лотов", 0, 1, "🔎 Сверяю лоты с FunPay…")
+    try:
+        _mark_gone(game_ids)
+    except Exception as e:
+        log.warning(f"{LP} сверка лотов с FunPay: {e}")
+    try:
+        plan = make_plan()
+    except Exception as e:
+        log.warning(f"{LP} план создания лотов: {e}")
+        return _finish_job(chat_id, msg_id, f"❌ Не получилось составить список лотов: {esc(str(e)[:160])}")
     if not plan:
-        return _alert(call, "Нечего создавать")
-    _start_job(call, "Создание лотов", _run_create, plan)
+        return _finish_job(chat_id, msg_id, "✅ Нечего создавать — все лоты на FunPay на месте.")
+    _run_create(chat_id, msg_id, plan)
 
 
 def _new_games_check():
@@ -3636,7 +3764,7 @@ ACTIONS = {
                                                   "(напр. <code>Россия</code>):", "gx:steam:0"),
     "rl": scr_rentals, "rn": scr_rental, "rc": act_rental_code, "rk": act_rental_kick, "rp": act_rental_password,
     "rx": act_rental_extend, "rtm": act_rental_terminate, "rty": act_rental_terminate_yes,
-    "st": scr_stats, "sx": scr_stats_detail, "pr": scr_profit,
+    "st": scr_stats, "sx": scr_stats_detail, "scl": act_stats_clear, "scly": act_stats_clear_yes, "pr": scr_profit,
     "set": scr_settings, "key": act_key, "px": scr_proxy, "pxm": act_proxy_mode, "mka": act_markup_all,
     "mkay": act_markup_all_yes, "mkc": scr_cat_markup, "mkcs": act_cat_markup, "bn": scr_bonus, "stars": act_stars,
     "ntf": scr_notify, "nt": act_notify, "nta": act_notify_all, "q": scr_problems, "qclr": act_problems_clear,
@@ -3792,10 +3920,22 @@ def in_cat_markup(uid, text, sub):
 def in_proxy(uid, text, _):
     S["proxy"], S["proxy_mode"] = text.strip(), "custom"
     _save("settings")
-    api = _api()
-    data, err = api.balance() if api else (None, "no_key")
-    return ("✅ Прокси сохранён, MUVSell отвечает." if data else
-            f"⚠️ Прокси сохранён, но проверка не прошла: {esc(_human(err, api))}"), [_back("px")], None
+    _state["down"].clear()
+    key = S.get("api_key") or ""
+    if not key:
+        return f"⚠️ Прокси сохранён, но проверить не вышло: {_human('no_key')}", [_back("px")], None
+    api = Api(key, _proxies(), fallback=False, tries=1)  # сам прокси, без запасных маршрутов
+    data, err = api.balance()
+    if data:
+        return "✅ Прокси сохранён, MUVSell отвечает.", [_back("px")], None
+    if Api(key, tries=1).balance()[0] is None:  # напрямую, не вышло — через запасной адрес
+        tail = "Нет связи ни напрямую, ни через запасной адрес MUVSell — проверьте интернет на сервере Cardinal."
+    elif "direct" in _state["down"]:
+        tail = ("Напрямую сервер Cardinal до muvsell.store не достаёт, но плагин работает через запасной адрес "
+                "MUVSell (Cloudflare) — прокси не нужен, выберите «Без прокси».")
+    else:
+        tail = "Напрямую MUVSell отвечает — пока прокси не работает, плагин ходит без него."
+    return f"⚠️ Прокси не работает: {esc(api.error or _human(err))}\n\n{tail}", [_back("px")], None
 
 
 def in_rental_extend(uid, text, rid):

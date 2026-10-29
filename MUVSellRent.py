@@ -851,7 +851,8 @@ def _notify(text: str, order_id=None, dedup: "str | None" = None, kb=None, cat: 
         if time.time() - _notified.get(dedup, 0) < 60:
             return
         _notified[dedup] = time.time()
-    log.info(f"{LP} {re.sub('<[^>]+>', '', text)}")
+    # спойлер — секрет (пароль аккаунта): в Telegram уходит, в лог Cardinal, который пересылают в поддержку, — нет
+    log.info(f"{LP} {re.sub('<[^>]+>', '', re.sub(r'<tg-spoiler>.*?</tg-spoiler>', '***', text, flags=re.S))}")
     if not bot or not (S.get("notify") or {}).get(cat, True):
         return
     if order_id and kb is None:
